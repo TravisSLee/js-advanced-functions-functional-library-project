@@ -32,12 +32,20 @@ const fi = (function() {
       return newCollection;
     },
 
-    reduce: function(collection, callback, acc = 0) {
-      for(let i = 0; i < collection.length; i++){
-        acc = callback(acc, collection[i], collection)
+    reduce: function(c=[], callback = () => {}, accumulator) {
+      let collection = c.slice(0)
+
+      if (!accumulator) {
+        accumulator = collection[0]
+        collection = collection.slice(1)
       }
-      return acc
-    },
+
+      for (let i=0; i < collection.length; i++) {
+        accumulator = callback(accumulator, collection[i], collection)
+      }
+
+          return accumulator;
+      },
 
     find: function(collection, callback) {
       for(let i = 0; i < collection.length; i++){
@@ -107,52 +115,84 @@ const fi = (function() {
       }
       return newCollection
     },
-//[1, [2], [3, [[4]]]]
-//[1, 2, 3, [4]]]
-    flatten: function(collection, oneLevel = false){
-      let holder = []
-      let level = -1
-      function isItAnArray(e){
-        if (Array.isArray(e)){
-          level += 1
-          if (oneLevel && level >= 2){
-            holder.push(e)
-            return
+
+    unpack: function(receiver, array) {
+          for (let value of array) {
+              receiver.push(value);
           }
-          return fi.each(e, isItAnArray);
-        } else{
-          level -= 1
-          holder.push(e)
-        }
-      }
+      },
 
-      isItAnArray(collection)
+    flatten: function(collection, shallow, newArray=[]) {
+          if (!Array.isArray(collection)) return newArray.push(collection)
 
-      return holder
-    },
-    
-    uniq: function(collection, isSorted = false, callback){
-      let sorted;
-      if(!isSorted){
-        sorted = fi.sortBy(collection, e => e);
+          if (shallow) {
+              for (let val of collection)
+                  Array.isArray(val) ? this.unpack(newArray, val) : newArray.push(val)
+          } else {
+              for (let val of collection) {
+                  this.flatten(val, false, newArray)
+              }
+          }
+
+          return newArray
+      },
+
+
+    uniq: function(collection, sorted=false, iteratee=false) {
+      if (sorted) {
+          return fi.uniqSorted(collection, iteratee)
+      } else if (!iteratee) {
+          return Array.from(new Set(collection))
       } else {
-        sorted = [...collection];
-      }
-      let uniques = [...sorted];
-      for(let i = 0; i < sorted.length - 1; i++){
-        console.log("comparing " + sorted[i] + " and " + sorted[i+1]);
-        if(sorted[i] === sorted[i + 1]){
-          uniques[i] = "X",
-          console.log("Uniques  array: " + uniques + " sorted array " + sorted)
-        }
-      }
-      console.log(fi.filter(uniques, e => e != "X"))
-      return fi.filter(uniques, e => e != "X")
+          const modifiedVals = new Set()
+          const uniqVals = new Set()
+
+          for (let val of collection) {
+              const moddedVal = iteratee(val)
+              if (!modifiedVals.has(moddedVal)) {
+                  modifiedVals.add(moddedVal)
+                  uniqVals.add(val)
+              }
+          }
+
+          return Array.from(uniqVals)
+          }
     },
 
-    functions: function() {
+    keys: function(obj) {
+      // Using for loop
+      const keys = []
 
-    },
+      for (let key in obj){
+          keys.push(key)
+      }
+
+      return keys
+  },
+
+  values: function(obj) {
+      // Using for loop
+      const values = []
+
+      for (let key in obj){
+          values.push(obj[key])
+      }
+
+      return values
+
+  },
+
+  functions: function(object) {
+      const functionNames = []
+
+      for (let key in object) {
+          if (typeof object[key] === "function"){
+              functionNames.push(key)
+          }
+      }
+
+      return functionNames.sort()
+  },
 
 
   }
